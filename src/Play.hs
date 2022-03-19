@@ -110,8 +110,8 @@ readFive' n max acc = do
 
     case (c, c `elem` ['a'..'z']) of 
         ('\b',_) -> when (n < max) eraseChar >> readFive' (min max (n+1)) max (drop 1 acc)
-        ('\n',_) -> if n == 0 then putChar '\n' >> pure acc else readFive'  n max acc 
-        ('\r',_) -> if n == 0 then putChar '\n' >> pure acc else readFive'  n max acc 
+        ('\n',_) -> if n == 0 then pure acc else readFive'  n max acc 
+        ('\r',_) -> if n == 0 then pure acc else readFive'  n max acc 
         (_,True) -> if n > 0 then putChar c >> readFive' (n-1) max (c:acc) else readFive' n max acc 
         _        -> readFive' n max acc 
 

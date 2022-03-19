@@ -70,6 +70,7 @@ withNoBuffer ma = do
     hSetBuffering stdin stdinBuffer
     hSetBuffering stdout stdoutBuffer
     hSetEcho stdout True
+    
     pure a
 
 -- Multi-platform version of `getChar` which has a fix for a GHC bug with Windows cmd/Powershell

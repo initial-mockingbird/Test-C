@@ -23,9 +23,9 @@ data Match
 -- Instances                 |
 ------------------------------
 
-instance Show Match where
+instance Show Match where 
     show (Absent c)    = ['\11035',c]
-    show (Misplaced c) = ['\129000',c]
+    show (Misplaced c) = ['\129000',c] 
     show (Correct c)   = ['\129001',c]
 
 instance Show Target where
@@ -72,7 +72,7 @@ match G {getGuess=g} T {getTarget=t}  = snd $ match' Map.empty g t
             | Map.member g preds || Map.member g post = f (Misplaced g :)  res
             | otherwise  = f (Absent g :) res  
             where
-                res@(post,_) = match' (Map.insert g () preds) gs ts 
+                res@(post,_) = match' (Map.insert t () preds) gs ts 
                 f = bimap (Map.insert t ())
         match' _ _ _ = undefined 
 
