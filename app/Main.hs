@@ -1,6 +1,7 @@
 module Main where
 
 
+import Play
 
 main :: IO ()
-main = pure ()
+main = menu

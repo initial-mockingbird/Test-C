@@ -5,7 +5,9 @@ import Util
 import System.Random (randomRIO)
 import Match -- No deberian ser necesarios 
 import AA    
-
+import System.IO 
+import Control.Monad
+import Data.Char
 ---------------------------------
 -- Types                        |
 ---------------------------------
@@ -24,13 +26,16 @@ data Result = Win Target | Lose Target
 -- Instances                    |
 ---------------------------------
 
--- DANI ACAAAAAAAAAAAAAAAAAAAAAA
 instance Show GameState where
-    show state = "Estado actual"
+    show GS {played=_played, won=_won, streak=_streak} 
+        =  "Played: "  ++ show _played 
+        ++ " Won: "    ++ show _won 
+        ++ " Lost: "   ++ show (_played - _won) 
+        ++ " Streak: " ++ show _streak
 
--- DANI ACAAAAAAAAAAAAAAAAAAAAAA
 instance Show Result where
-    show state = "Todos somos ganadores en el juego de la vida"
+    show (Win (T t))  = "Got it! It was «" ++ t ++ "» 😎 "
+    show (Lose (T t)) = "Bummer! It was «" ++ t ++ "» 💀 "
 
 ---------------------------------
 -- Functions Auxiliares         |
@@ -48,6 +53,7 @@ initialState = do
     arbol <- loadDictionary dictionary
     return $ GS 0 0 0 (T "") arbol
 
+playTheGame :: GameState -> IO ()
 playTheGame state = do
     newTarget <- pickTarget (dict state)
     res <- play (changeTarget state newTarget) 
@@ -57,8 +63,9 @@ playTheGame state = do
     print newTarget
     continue <- yesOrNo "Desea continuar"
 
-    if continue then playTheGame newState 
-    else return "End of the game"
+    if continue 
+        then playTheGame newState 
+        else putStrLn "End of the game"
     
     where
         updState :: GameState -> Result -> GameState
@@ -69,12 +76,51 @@ playTheGame state = do
 
 -- PARA PROBAR TEMPORALMENTE, LUEGO BORRAR
 menu = do
+    hSetBuffering stdout NoBuffering
+    hSetBuffering stdin NoBuffering
     state <- initialState
     playTheGame state
 
--- DANI ACAAAAAAAAAAAAAAAAAAAAAA
+
 play :: GameState -> IO Result
-play state = return $ Win $ T "Ganador"
+play state = play' state 1 turns
+
+play' :: GameState -> Int -> Int -> IO Result
+play' gs current max =  do
+    putStr $ "Guess " ++ show current ++ "? "
+    word <- readFive 
+
+    let t = target gs
+        d = dict gs 
+        m = match (G word) t
+        printMatch = (putStr . show)  m >> putChar '\n'
+
+    case (word `AA.member` d, fullMatch m) of
+        (False,_) -> putStrLn ("Your guess: '" ++ word ++ "' is not a valid word!") >> play' gs current max
+        (_,True)  -> printMatch >> pure (Win t)
+        (_,False) -> printMatch >> if current + 1 == max then pure $ Lose t else play' gs (current +1) max
+
+
+readFive :: IO String
+readFive =  reverse <$> readFive' 5 5 ""
+
+readFive' :: Int -> Int -> String -> IO String
+readFive' n max acc = do
+    c <- toLower <$>  getChar'
+
+    case (c, c `elem` ['a'..'z']) of 
+        ('\b',_) -> when (n < max) eraseChar >> readFive' (min max (n+1)) max (drop 1 acc)
+        ('\n',_) -> if n == 0 then putChar '\n' >> pure acc else readFive'  n max acc 
+        ('\r',_) -> if n == 0 then putChar '\n' >> pure acc else readFive'  n max acc 
+        (_,True) -> if n > 0 then putChar c >> readFive' (n-1) max (c:acc) else readFive' n max acc 
+        _        -> readFive' n max acc 
+
+
+eraseChar :: IO ()
+eraseChar = putChar '\b' >> putChar ' ' >> putChar '\b'
+
+eraseNChar :: Int -> IO ()
+eraseNChar = flip replicateM_ (eraseChar >> putChar ' ') >=> const (putChar '\b')
 
 pickTarget :: AA String String -> IO Target
 pickTarget arbol = do
