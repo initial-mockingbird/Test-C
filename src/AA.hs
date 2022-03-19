@@ -10,7 +10,7 @@ module AA
     )
     where
 
-
+import System.Random (randomRIO) -- BORRAR
 import Prelude hiding (lookup)
 
 ---------------------------------
@@ -63,7 +63,6 @@ insertWithKey k v f t@Node{key=_key,val=_val,lAA=l,rAA=r}
 
 insertWith :: Ord k => k -> a -> (a -> a -> a) -> AA k a -> AA k a
 insertWith k v f = insertWithKey k v (\_ v v' -> f v v') 
-
 
 insert :: Ord k => k -> a -> AA k a -> AA k a
 insert k v = insertWith k v const
@@ -166,7 +165,7 @@ checkInvariant' Empty grandP = Right $ Empty
 checkInvariant' (Node lvl key val Empty Empty) _ 
     | lvl == 1 = Right $ (Node 1 key val Empty Empty)
     | otherwise = Left $ ([],OneChild) 
--- lvl>1 && 2 hijos 
+-- lvl>1
 checkInvariant' (Node l k v lNode rNode) grandP
     | l>1 && ( (isEmpty lNode) || (isEmpty rNode) )
         = Left $ ([],OneChild) 
