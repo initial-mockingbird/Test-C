@@ -59,9 +59,9 @@ playTheGame state = do
     res <- play (changeTarget state newTarget) 
     let newState = updState state res
 
-    print state
+    print newState
     print newTarget
-    continue <- yesOrNo "Desea continuar"
+    continue <- yesOrNo "Another round"
 
     if continue 
         then playTheGame newState 
@@ -69,8 +69,8 @@ playTheGame state = do
     
     where
         updState :: GameState -> Result -> GameState
-        updState (GS p w s t d) (Win _) = GS (p+1) (w+1) s (T "") d
-        updState (GS p w s t d) (Lose _) = GS (p+1) w (s+1) (T "") d
+        updState (GS p w s t d) (Win _) = GS (p+1) (w+1) (s+1) (T "") d
+        updState (GS p w s t d) (Lose _) = GS (p+1) w 0 (T "") d
         changeTarget :: GameState -> Target -> GameState
         changeTarget (GS p w s t d) t2 = GS p w s t2 d
 
@@ -80,7 +80,6 @@ menu = do
     hSetBuffering stdin NoBuffering
     state <- initialState
     playTheGame state
-
 
 play :: GameState -> IO Result
 play state = play' state 1 turns
@@ -124,10 +123,14 @@ eraseNChar = flip replicateM_ (eraseChar >> putChar ' ') >=> const (putChar '\b'
 
 pickTarget :: AA String String -> IO Target
 pickTarget arbol = do
-    str <- ( lista !!) <$> randomRIO (0,l-1)
+    (str,len) <- pick arbol
     return $ T str
-    where (lista,l) = treeToList arbol 
 
-treeToList :: AA String String -> ( [String], Int ) 
-treeToList arbolAA = foldr unir ([],0) arbolAA 
-    where unir str (lista,l) = (lista ++ [str],l+1) 
+pick :: AA String String -> IO (String,Int)
+pick arbol = foldr union ( pure ([],0) ) arbol
+    where 
+        union str z = do 
+            (strPrev,len) <- z  
+            val <- randomRIO (0,len)
+            if val==0 then return (str,len+1)
+            else return (strPrev,len+1)

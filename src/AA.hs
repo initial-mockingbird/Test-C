@@ -10,7 +10,8 @@ module AA
     )
     where
 
-import System.Random (randomRIO) -- BORRAR
+import System.IO 
+import System.Random (randomRIO) -- BORRAR 
 import Prelude hiding (lookup)
 
 ---------------------------------
@@ -25,7 +26,7 @@ data AA k a
     , lAA :: AA k a
     , rAA :: AA k a
     } deriving (Eq)
-
+    
 ---------------------------------
 -- Instances                    |
 ---------------------------------
