@@ -49,14 +49,12 @@ takeAA (GS p w s t d) = d
 ---------------------------------
 
 initialState :: IO GameState 
-initialState = do
-    arbol <- loadDictionary dictionary
-    return $ GS 0 0 0 (T "") arbol
+initialState = GS 0 0 0 (T "") <$> loadDictionary dictionary
 
 playTheGame :: GameState -> IO ()
 playTheGame state = do
     newTarget <- pickTarget (dict state)
-    res <- play (changeTarget state newTarget) 
+    res       <- play (changeTarget state newTarget) 
     let newState = updState state res
 
     print newState
@@ -122,15 +120,13 @@ eraseNChar :: Int -> IO ()
 eraseNChar = flip replicateM_ (eraseChar >> putChar ' ') >=> const (putChar '\b')
 
 pickTarget :: AA String String -> IO Target
-pickTarget arbol = do
-    (str,len) <- pick arbol
-    return $ T str
+pickTarget arbol = T . fst <$> pick arbol 
 
 pick :: AA String String -> IO (String,Int)
-pick arbol = foldr union ( pure ([],0) ) arbol
+pick = foldM union ([],0) 
     where 
-        union str z = do 
-            (strPrev,len) <- z  
+        union (strPrev,len) str = do 
             val <- randomRIO (0,len)
-            if val==0 then return (str,len+1)
-            else return (strPrev,len+1)
+            if val==0 
+                then return (str,len+1)
+                else return (strPrev,len+1)

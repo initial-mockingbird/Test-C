@@ -23,12 +23,8 @@ dictionary = "american-english"
 ---------------------------------
 
 validWord :: String -> Bool
-validWord str 
-    | (length str==5) && all isLetter str  = True
-    | otherwise = False
+validWord  = (&&) <$> (length . (==5)) <*> all isLetter
     where
-        fAnd :: Bool -> Bool -> Bool
-        fAnd x y = x && y
         isLetter :: Char -> Bool
         isLetter = (`elem` ['a' .. 'z'])
 
@@ -46,11 +42,11 @@ yesOrNo :: String -> IO Bool
 yesOrNo text = withNoBuffer $ do
     putStr ( text ++ " (y/n) ?" )
     c <- getChar'
-    b <- case c of 
+    case c of 
         'y' -> putStr " y\n" >>return True
         'n' -> putStr " n\n" >>return False
         _   -> putStr "\n"   >> yesOrNo text
-    return b
+
 
 
 -----------------------------------------------------------
