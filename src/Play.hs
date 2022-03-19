@@ -130,3 +130,5 @@ pick = foldM union ([],0)
             if val==0 
                 then return (str,len+1)
                 else return (strPrev,len+1)
+
+

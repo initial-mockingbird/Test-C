@@ -23,7 +23,7 @@ dictionary = "american-english"
 ---------------------------------
 
 validWord :: String -> Bool
-validWord  = (&&) <$> (length . (==5)) <*> all isLetter
+validWord  = (&&) <$> ((==5) . length ) <*> all isLetter
     where
         isLetter :: Char -> Bool
         isLetter = (`elem` ['a' .. 'z'])
