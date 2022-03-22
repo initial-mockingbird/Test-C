@@ -1,5 +1,5 @@
 module AA 
-    ( AA
+    {-( AA
     , empty 
     , isEmpty
     , insert
@@ -7,13 +7,15 @@ module AA
     , delete 
     , member
     , fromList
-    )
+    )-}
     where
 
 import System.IO 
 import System.Random (randomRIO) -- BORRAR 
 import Prelude hiding (lookup)
-
+import Control.Monad
+import Data.Bifunctor
+import Data.Foldable
 ---------------------------------
 -- Types                        |
 ---------------------------------
@@ -25,7 +27,7 @@ data AA k a
     , val :: a
     , lAA :: AA k a
     , rAA :: AA k a
-    } deriving (Eq)
+    } deriving (Eq, Show)
     
 ---------------------------------
 -- Instances                    |
@@ -181,5 +183,52 @@ checkInvariant' (Node l k v lNode rNode) grandP
         rNode2 <- combineVTree R $ checkInvariant' rNode cuNode 
         Right cuNode 
     where cuNode = Node l k v lNode rNode
+
+
+---------------------------------------
+-- Idea salvaje de dani
+---------------------------------------
+
+---------------------------
+-- A falta de Monad.Except|
+---------------------------
+
+throwError :: e -> Either e a
+throwError = Left 
+
+whenBThrowError :: Bool -> e -> a -> Either e a
+whenBThrowError b e a = when b (throwError e) >> pure a  
+
+
+-- Todos los posibles casos que puede dar error
+badNode, badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild :: AA k v ->  Either InvariantError (AA k v)
+
+-- generic programming go brrrrr, ahora se puede reemplazar perfectamente por cualquier Monad.Except
+-- o mejor aun, cualquier applicative cuya semantica capte errores.
+checkInvariant'' :: AA k v -> VTree k v
+checkInvariant'' Empty              = pure Empty
+checkInvariant'' t@(Node n k v l r) 
+    =  first (\e -> ([],e)) (badNode t) 
+    >> first (first (L:)) (checkInvariant'' l)
+    >> first (first (R:)) (checkInvariant'' r)
+
+
+badNode t = traverse_ ($ t) [badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild] >> pure t
+
+badLeaf t@(Node n _ _ Empty Empty) = whenBThrowError (n /= 1) BadLeafLevel t
+badLeaf t = pure t
+
+badLeftLevel t@(Node n _ _ (Node ln _ _ _ _) _) = whenBThrowError (ln + 1 /= n) BadLeftLevel t
+badLeftLevel t = pure t
+
+badRightLevel t@(Node n _ _ _ (Node rn _ _ _ _)) = whenBThrowError (rn + 1 /= n && rn /= n) BadRightLevel t
+badRightLevel t = pure t
+
+badGrandLevel t@(Node n _ _ _ (Node _ _ _ _ (Node rrn _ _ _ _))) = whenBThrowError (n <= rrn) BadGrandLevel t
+badGrandLevel t = pure t
+
+badOneChild t@(Node n _ _ Empty _) = whenBThrowError (n > 1) OneChild t
+badOneChild t@(Node n _ _ _ Empty) = whenBThrowError (n > 1) OneChild t
+badOneChild t = pure t
 
 
