@@ -190,7 +190,7 @@ checkInvariant' (Node l k v lNode rNode) grandP
 ---------------------------------------
 
 ---------------------------
--- A falta de Monad.Except|
+-- A falta de Monad.Error |
 ---------------------------
 
 throwError :: e -> Either e a
@@ -203,7 +203,7 @@ whenBThrowError b e a = when b (throwError e) >> pure a
 -- Todos los posibles casos que puede dar error
 badNode, badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild :: AA k v ->  Either InvariantError (AA k v)
 
--- generic programming go brrrrr, ahora se puede reemplazar perfectamente por cualquier Monad.Except
+-- generic programming go brrrrr, ahora se puede reemplazar perfectamente por cualquier Monad.Error
 -- o mejor aun, cualquier applicative cuya semantica capte errores.
 checkInvariant'' :: AA k v -> VTree k v
 checkInvariant'' Empty              = pure Empty
@@ -215,20 +215,20 @@ checkInvariant'' t@(Node n k v l r)
 
 badNode t = traverse_ ($ t) [badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild] >> pure t
 
-badLeaf t@(Node n _ _ Empty Empty) = whenBThrowError (n /= 1) BadLeafLevel t
+badLeaf t@Node{lvl=n, lAA=Empty, rAA=Empty} = whenBThrowError (n /= 1) BadLeafLevel t
 badLeaf t = pure t
 
-badLeftLevel t@(Node n _ _ (Node ln _ _ _ _) _) = whenBThrowError (ln + 1 /= n) BadLeftLevel t
+badLeftLevel t@Node{lvl=n,lAA=Node{lvl=ln}} = whenBThrowError (ln + 1 /= n) BadLeftLevel t
 badLeftLevel t = pure t
 
-badRightLevel t@(Node n _ _ _ (Node rn _ _ _ _)) = whenBThrowError (rn + 1 /= n && rn /= n) BadRightLevel t
+badRightLevel t@Node {lvl=n,rAA=Node{lvl=rn}} = whenBThrowError (rn + 1 /= n && rn /= n) BadRightLevel t
 badRightLevel t = pure t
 
-badGrandLevel t@(Node n _ _ _ (Node _ _ _ _ (Node rrn _ _ _ _))) = whenBThrowError (n <= rrn) BadGrandLevel t
+badGrandLevel t@Node{lvl=n,rAA=Node{rAA=Node{lvl=rrn}}} = whenBThrowError (n <= rrn) BadGrandLevel t
 badGrandLevel t = pure t
 
-badOneChild t@(Node n _ _ Empty _) = whenBThrowError (n > 1) OneChild t
-badOneChild t@(Node n _ _ _ Empty) = whenBThrowError (n > 1) OneChild t
+badOneChild t@Node{lvl=n, lAA=Empty} = whenBThrowError (n > 1) OneChild t
+badOneChild t@Node{lvl=n, rAA=Empty} = whenBThrowError (n > 1) OneChild t
 badOneChild t = pure t
 
 
