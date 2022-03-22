@@ -211,6 +211,7 @@ checkInvariant'' t@(Node n k v l r)
     =  first (\e -> ([],e)) (badNode t) 
     >> first (first (L:)) (checkInvariant'' l)
     >> first (first (R:)) (checkInvariant'' r)
+    >> pure t
 
 
 badNode t = traverse_ ($ t) [badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild] >> pure t
