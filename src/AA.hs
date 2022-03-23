@@ -16,6 +16,7 @@ import Prelude hiding (lookup)
 import Control.Monad
 import Data.Bifunctor
 import Data.Foldable
+
 ---------------------------------
 -- Types                        |
 ---------------------------------
@@ -70,7 +71,44 @@ insertWith k v f = insertWithKey k v (\_ v v' -> f v v')
 insert :: Ord k => k -> a -> AA k a -> AA k a
 insert k v = insertWith k v const
 
-delete = undefined 
+delete :: Ord k => k -> AA k a -> AA k a 
+delete _ Empty = Empty
+delete k n@Node {lvl=_lvl, key=_key, val=_val, lAA=_lAA, rAA=_rAA}
+    | k > _key = g n{rAA= delete k _rAA}
+    | k < _key = g n{lAA= delete k _lAA}
+    | isLeaf n = getRight n
+    | isEmpty $ getLeft n = 
+                let l@Node{key=k',val=v} = successor n
+                    r  = delete k' $ getRight n
+                    n' = n{key=k',val=v,rAA=r}
+                in g n'
+    | otherwise = 
+                let l@Node{key=k',val=v} = predecessor n
+                    left = delete k' $ getLeft n
+                    n'   = n{key=k',val=v,lAA=left}
+                in g n'
+    where
+        
+        infixr 9 |>
+        (|>) :: (a -> b) -> (b -> c) -> a -> c
+        (|>) = flip (.)
+
+        g :: Ord k => AA k a -> AA k a 
+        g  
+            = decreaseLevel 
+            |> skew 
+            |> (\n@Node{rAA=_rAA} -> n{rAA=skew _rAA})
+            |> h
+            |> split 
+            |> (\n@Node{rAA=_rAA} -> n{rAA=split _rAA})
+        
+        h n@Node{rAA=Empty} = n
+        h n@Node{rAA=n'@Node {rAA=_rAA}} = n{rAA=n'{rAA=skew _rAA}}
+        h n = n
+        
+        
+
+
 
 lookup :: Ord k => k -> AA k v -> Maybe v
 lookup _ Empty = Nothing 
@@ -98,6 +136,54 @@ member k t = case lookup k t of
 isEmpty :: AA k a -> Bool
 isEmpty Empty = True
 isEmpty _     = False 
+
+isLeaf :: AA k a -> Bool
+isLeaf Node {lvl=1} = True 
+isLeaf _ = False
+
+getRight :: AA k a -> AA k a
+getRight Empty = Empty
+getRight Node {rAA=_rAA} = _rAA 
+
+getLeft :: AA k a -> AA k a
+getLeft Empty = Empty
+getLeft Node {lAA=_lAA} = _lAA 
+
+successor :: AA k a -> AA k a
+successor Empty = Empty
+successor Node{rAA=Empty} = Empty
+successor Node{rAA=n} = getMin n 
+    where
+        getMin Empty = Empty
+        getMin n@Node {lAA=Empty} = n{lvl=1}
+        getMin n = getMin $ getLeft n 
+
+
+predecessor :: AA k a -> AA k a
+predecessor Empty = Empty
+predecessor Node{lAA=Empty} = Empty
+predecessor Node{lAA=n} = getMax n 
+    where
+        getMax Empty = Empty
+        getMax n@Node {rAA=Empty} = n{lvl=1}
+        getMax n = getMax $ getRight n 
+
+modifyWithCrumbs :: (AA k a -> AA k a) -> Crumbs -> AA k a -> AA k a
+modifyWithCrumbs f [] t = f t
+modifyWithCrumbs f (L:cs) t@Node{lAA=_lAA} = t{lAA = modifyWithCrumbs f cs _lAA}
+modifyWithCrumbs f (R:cs) t@Node{rAA=_rAA} = t{rAA = modifyWithCrumbs f cs _rAA}
+modifyWithCrumbs _ _ Empty = Empty
+
+modifyLeft, modifyRight :: (AA k a -> AA k a) -> AA k a -> AA k a 
+
+modifyLeft  f = modifyWithCrumbs f [L]
+modifyRight f = modifyWithCrumbs f [R]
+
+setLeft, setRight :: AA k a -> AA k a -> AA k a 
+
+setLeft l = modifyLeft (const l)
+setRight l = modifyRight (const l)
+
 
 ---------------------------------
 -- Internal                     |
@@ -196,12 +282,12 @@ checkInvariant' (Node l k v lNode rNode) grandP
 throwError :: e -> Either e a
 throwError = Left 
 
-whenBThrowError :: Bool -> e -> a -> Either e a
-whenBThrowError b e a = when b (throwError e) >> pure a  
+assert :: Bool -> e ->  Either e ()
+assert b e = when b (throwError e) 
 
 
 -- Todos los posibles casos que puede dar error
-badNode, badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild :: AA k v ->  Either InvariantError (AA k v)
+badNode, badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild :: AA k v ->  Either InvariantError ()
 
 -- generic programming go brrrrr, ahora se puede reemplazar perfectamente por cualquier Monad.Error
 -- o mejor aun, cualquier applicative cuya semantica capte errores.
@@ -214,22 +300,21 @@ checkInvariant'' t@(Node n k v l r)
     >> pure t
 
 
-badNode t = traverse_ ($ t) [badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild] >> pure t
+badNode t = traverse_ ($ t) [badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild] 
 
-badLeaf t@Node{lvl=n, lAA=Empty, rAA=Empty} = whenBThrowError (n /= 1) BadLeafLevel t
-badLeaf t = pure t
+badLeaf t@Node{lvl=n, lAA=Empty, rAA=Empty} = assert (n /= 1) BadLeafLevel 
+badLeaf t = pure ()
 
-badLeftLevel t@Node{lvl=n,lAA=Node{lvl=ln}} = whenBThrowError (ln + 1 /= n) BadLeftLevel t
-badLeftLevel t = pure t
+badLeftLevel t@Node{lvl=n,lAA=Node{lvl=ln}} = assert (ln + 1 /= n) BadLeftLevel 
+badLeftLevel t = pure ()
 
-badRightLevel t@Node {lvl=n,rAA=Node{lvl=rn}} = whenBThrowError (rn + 1 /= n && rn /= n) BadRightLevel t
-badRightLevel t = pure t
+badRightLevel t@Node {lvl=n,rAA=Node{lvl=rn}} = assert (rn + 1 /= n && rn /= n) BadRightLevel 
+badRightLevel t = pure ()
 
-badGrandLevel t@Node{lvl=n,rAA=Node{rAA=Node{lvl=rrn}}} = whenBThrowError (n <= rrn) BadGrandLevel t
-badGrandLevel t = pure t
+badGrandLevel t@Node{lvl=n,rAA=Node{rAA=Node{lvl=rrn}}} = assert (n <= rrn) BadGrandLevel 
+badGrandLevel t = pure ()
 
-badOneChild t@Node{lvl=n, lAA=Empty} = whenBThrowError (n > 1) OneChild t
-badOneChild t@Node{lvl=n, rAA=Empty} = whenBThrowError (n > 1) OneChild t
-badOneChild t = pure t
-
+badOneChild t@Node{lvl=n, lAA=Empty} = assert (n > 1) OneChild 
+badOneChild t@Node{lvl=n, rAA=Empty} = assert (n > 1) OneChild 
+badOneChild t = pure ()
 

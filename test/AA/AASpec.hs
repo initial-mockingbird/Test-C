@@ -90,5 +90,21 @@ invariantSpec = describe "making sure that dani's implementation of checkInvaria
             (Left _, Left _)   -> True 
             _      -> False
 
-internalsSpec :: IO ()
-internalsSpec = traverse_ hspec [skewSpec,splitSpec,lookupSpec, insertSpec, invariantSpec]
+deleteSpec :: Spec
+deleteSpec = describe "delete spec" $ do
+    prop "deleting ANY element keeps the invariants: " $
+        \(RAA t :: RandomAA Int Int) -> 
+            let xs = map fst $ AA.toList t 
+                f x = AA.delete x t
+                isRight (Right _) = True
+                isRight _         = False
+            in all (isRight . AA.checkInvariant . f) xs
+    prop "deleting ANY element means the element is no longer there! " $
+        \(RAA t :: RandomAA Int Int) -> 
+            let xs = map fst $ AA.toList t 
+                notMember x t= not $ AA.member x t
+                f x = x `notMember` AA.delete x t
+            in all f xs
+
+internalsSpecAA :: IO ()
+internalsSpecAA = traverse_ hspec [skewSpec,splitSpec,lookupSpec, insertSpec, invariantSpec, deleteSpec]

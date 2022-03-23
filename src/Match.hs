@@ -82,3 +82,7 @@ fullMatch = all isCorrect
         isCorrect (Correct _) = True 
         isCorrect _           = False
 
+getMatchChar :: Match -> Char 
+getMatchChar (Absent c)    = c
+getMatchChar (Misplaced c) = c
+getMatchChar (Correct c)   = c

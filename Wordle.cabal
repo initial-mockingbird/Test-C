@@ -28,6 +28,7 @@ library
       AA
       Match
       Play
+      Solve
       Util
   other-modules:
       Paths_Wordle
@@ -56,6 +57,7 @@ test-suite Wordle-test
   main-is: Spec.hs
   other-modules:
       AA.AASpec
+      Match.MatchSpec
       Paths_Wordle
   hs-source-dirs:
       test

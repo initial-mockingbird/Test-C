@@ -1,4 +1,9 @@
 import  AA.AASpec  
+import Match.MatchSpec
+import Data.Foldable (sequenceA_)
 
 main :: IO ()
-main = internalsSpec
+main = sequenceA_
+    [ internalsSpecMatch
+    , internalsSpecAA
+    ]
