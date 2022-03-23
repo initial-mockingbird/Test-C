@@ -282,8 +282,8 @@ checkInvariant' (Node l k v lNode rNode) grandP
 throwError :: e -> Either e a
 throwError = Left 
 
-assert :: Bool -> e ->  Either e ()
-assert b e = when b (throwError e) 
+throwEWhen :: Bool -> e ->  Either e ()
+throwEWhen b e = when b (throwError e) 
 
 
 -- Todos los posibles casos que puede dar error
@@ -302,19 +302,19 @@ checkInvariant'' t@(Node n k v l r)
 
 badNode t = traverse_ ($ t) [badLeaf, badLeftLevel, badRightLevel, badGrandLevel, badOneChild] 
 
-badLeaf t@Node{lvl=n, lAA=Empty, rAA=Empty} = assert (n /= 1) BadLeafLevel 
+badLeaf t@Node{lvl=n, lAA=Empty, rAA=Empty} = throwEWhen (n /= 1) BadLeafLevel 
 badLeaf t = pure ()
 
-badLeftLevel t@Node{lvl=n,lAA=Node{lvl=ln}} = assert (ln + 1 /= n) BadLeftLevel 
+badLeftLevel t@Node{lvl=n,lAA=Node{lvl=ln}} = throwEWhen (ln + 1 /= n) BadLeftLevel 
 badLeftLevel t = pure ()
 
-badRightLevel t@Node {lvl=n,rAA=Node{lvl=rn}} = assert (rn + 1 /= n && rn /= n) BadRightLevel 
+badRightLevel t@Node {lvl=n,rAA=Node{lvl=rn}} = throwEWhen (rn + 1 /= n && rn /= n) BadRightLevel 
 badRightLevel t = pure ()
 
-badGrandLevel t@Node{lvl=n,rAA=Node{rAA=Node{lvl=rrn}}} = assert (n <= rrn) BadGrandLevel 
+badGrandLevel t@Node{lvl=n,rAA=Node{rAA=Node{lvl=rrn}}} = throwEWhen (n <= rrn) BadGrandLevel 
 badGrandLevel t = pure ()
 
-badOneChild t@Node{lvl=n, lAA=Empty} = assert (n > 1) OneChild 
-badOneChild t@Node{lvl=n, rAA=Empty} = assert (n > 1) OneChild 
+badOneChild t@Node{lvl=n, lAA=Empty} = throwEWhen (n > 1) OneChild 
+badOneChild t@Node{lvl=n, rAA=Empty} = throwEWhen (n > 1) OneChild 
 badOneChild t = pure ()
 
