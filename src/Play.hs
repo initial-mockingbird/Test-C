@@ -105,10 +105,10 @@ play' gs current max =  do
     let t = target gs
         d = dict gs 
         m = match (G word) t
-        printMatch = putChar ' ' >> (putStr' . show)  m >> putChar '\n'
+        printMatch = putChar' ' ' >> (putStr' . show)  m >> putChar' '\n'
 
     case (word `AA.member` d, fullMatch m) of
-        (False,_) -> putStrLn ("Your guess: '" ++ word ++ "' is not a valid word!") >> play' gs current max
+        (False,_) -> putStrLn (" Your guess: '" ++ word ++ "' is not a valid word!") >> play' gs current max
         (_,True)  -> printMatch >> pure (Win t)
         (_,False) -> printMatch >> if current + 1 == max then pure $ Lose t else play' gs (current +1) max
 
@@ -125,16 +125,16 @@ readFive' n max acc = do
         ('\b',_) -> when (n < max) eraseChar >> readFive' (min max (n+1)) max (drop 1 acc)
         ('\n',_) -> if n == 0 then pure acc else readFive'  n max acc 
         ('\r',_) -> if n == 0 then pure acc else readFive'  n max acc 
-        (_,True) -> if n > 0 then putChar c >> readFive' (n-1) max (c:acc) else readFive' n max acc 
+        (_,True) -> if n > 0 then putChar' c >> readFive' (n-1) max (c:acc) else readFive' n max acc 
         _        -> readFive' n max acc 
 
 -- | Erases a character from the `stdout`
 eraseChar :: IO ()
-eraseChar = putChar '\b' >> putChar ' ' >> putChar '\b'
+eraseChar = putChar' '\b' >> putChar' ' ' >> putChar' '\b'
 
 -- | Erases `n` character from the `stdout`
 eraseNChar :: Int -> IO ()
-eraseNChar = flip replicateM_ (eraseChar >> putChar ' ') >=> const (putChar '\b')
+eraseNChar = flip replicateM_ (eraseChar >> putChar' ' ') >=> const (putChar' '\b')
 
 -- | Randomly picks a target.
 pickTarget :: AA String String -> IO Target

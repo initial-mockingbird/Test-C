@@ -109,6 +109,10 @@ withNoBuffer ma = do
 putStr' :: String -> IO ()
 putStr' s = putStr s >> hFlush stdout
 
+-- | Same
+putChar' :: Char -> IO ()
+putChar' c = putChar c >> hFlush stdout
+
 -- Multi-platform version of `getChar` which has a fix for a GHC bug with Windows cmd/Powershell
 getChar' :: IO Char
 getChar' = withNoBuffer $ do  -- just in case, DON'T echo
@@ -126,3 +130,5 @@ getChar' = withNoBuffer $ do  -- just in case, DON'T echo
 foreign import ccall unsafe "conio.h getch"
   c_getch :: IO CInt
 #endif
+
+
