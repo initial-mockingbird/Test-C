@@ -86,8 +86,7 @@ solveTheGame' s'@GS {remaining=_remaining} = do
     let s = s'{possible= fmap snd $ AA.toList $ dict s}
     foldM_ (\s n -> getHint n >>= \m -> suggestRound m s) s [1..6] 
     putStrLn "You Lost \129319"
-    pure ()
-
+    mzero
 
 
 updateState :: [Match] -> SolverState -> IO SolverState
@@ -114,3 +113,4 @@ getHint n = do
         genCarita _ = "\129300"
 
         carita = genCarita n
+
