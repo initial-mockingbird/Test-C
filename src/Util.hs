@@ -9,6 +9,7 @@ Portability : POSIX
 
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Util where 
 
 import System.IO
@@ -21,13 +22,14 @@ import System.IO
       hSetEcho,
       BufferMode(NoBuffering),
       stdin,
-      stdout )  
-import Control.Monad ( Monad(return, (>>)), Functor(fmap) )
+      stdout,
+      hFlush )  
+import Control.Monad ( Monad(return, (>>)), Functor(fmap), MonadPlus(mzero) )
 import Prelude hiding (lookup)
 import AA ( AA, fromList )
 import Foreign.C.Types ( CInt(..) )
 import Data.Char ( chr )
-import Control.Exception (catch)
+import Control.Exception (catch, SomeException, throw)
 
 -- | Number of turns in the game
 turns :: Int
@@ -79,7 +81,8 @@ yesOrNo text = withNoBuffer $ do
 
 -- | Perform an IO action with no buffering (stdin AND stdout) and no echo.
 -- restoring the states after it's done (NOTE: if an exception happens, it's NOT guaranteed that the
--- restoration is done!)
+-- restoration is done! primarely because i'm not sure what happens if the catch isinterrupted by another 
+-- exception...)
 withNoBuffer :: IO a -> IO a
 withNoBuffer ma = do 
     stdinBuffer  <- hGetBuffering stdin 
@@ -88,10 +91,12 @@ withNoBuffer ma = do
     hSetBuffering stdout NoBuffering
     hSetEcho stdout False
 
-    a <- ma `catch` (\_ -> 
+    -- try catch goes brrrrrrrr
+    a <- ma `catch` (\(e :: SomeException) -> 
         hSetBuffering stdin stdinBuffer 
         >> hSetBuffering stdout stdoutBuffer 
-        >> hSetEcho stdout True)
+        >> hSetEcho stdout True 
+        >> throw e ) 
 
     hSetBuffering stdin stdinBuffer
     hSetBuffering stdout stdoutBuffer

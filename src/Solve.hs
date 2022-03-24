@@ -121,4 +121,3 @@ getHint n = do
         genCarita _ = "\129300"
 
         carita = genCarita n
-
