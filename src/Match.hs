@@ -1,23 +1,35 @@
+{-|
+Module      : Match
+Description : Provides a way to check via a data type.
+License     : GPL-3
+Maintainer  : 15-11139@usb.ve, 16-10400@usb.ve
+Stability   : experimental
+Portability : POSIX
+-}
 module Match where
 
 
-import qualified AA as Map
-
+import qualified AA
 import qualified Text.Read as Text
-import Text.ParserCombinators.ReadPrec
-import Data.Bifunctor 
+import Text.ParserCombinators.ReadPrec ( look, pfail, get, ReadPrec )
+import Data.Bifunctor ( Bifunctor(bimap) ) 
 
 ------------------------------
 -- Types                     |
 ------------------------------
 
+-- | Represents the target word, that is, the word that is the solution.
 newtype Target = T {getTarget :: String}
+
+-- | Represents the guess word, that is, the word that the user input.
 newtype Guess  = G {getGuess  :: String}
 
+
+-- | Represents all the possible matches for a letter.
 data Match 
-    = Absent    Char 
-    | Misplaced Char 
-    | Correct   Char 
+    = Absent    Char -- ^ The letter never appears in target
+    | Misplaced Char -- ^ The letter appears somewhere in target (but it's misplaced)
+    | Correct   Char -- ^ The letter appears exactly in the same position in target.
 
 ------------------------------
 -- Instances                 |
@@ -34,6 +46,7 @@ instance Show Target where
 instance Show Guess where
     show G {getGuess=g}  = "Your guess: " ++ g
 
+-- Our read instance is forgiving, it does not care for spaces nor parenthesis.
 instance Read Match where
     readPrec     =  Text.parens $ do
         skipSpaces
@@ -48,39 +61,43 @@ instance Read Match where
             '\129001' -> return (Correct c)
             _         -> pfail
         where 
+            -- can it be done without the lookahead?
             skipSpaces :: ReadPrec ()
             skipSpaces = do
                 l <- look
                 let n = length $ takeWhile (`elem` [' ','\t']) l
                 traverse_ (const get) [1..n]
             
+
             void = (pure () <*)
             traverse_ f = void . traverse f
 ------------------------------
 -- Functions                 |
 ------------------------------
 
-
+-- | Given a guess and a target, returns the matches for each letter in guess.
 match :: Guess -> Target -> [Match]
-match G {getGuess=g} T {getTarget=t}  = snd $ match' Map.empty g t
+match G {getGuess=g} T {getTarget=t}  = snd $ match' AA.empty g t
     where 
-        match' :: Map.AA Char () -> String -> String -> (Map.AA Char (), [Match])
-        match' _     [] [] = (Map.empty, [])
+        match' :: AA.AA Char () -> String -> String -> (AA.AA Char (), [Match])
+        match' _     [] [] = (AA.empty, [])
         match' preds (g:gs) (t:ts) 
             | g == t     = f (Correct g :) res 
-            | Map.member g preds || Map.member g post = f (Misplaced g :)  res
+            | AA.member g preds || AA.member g post = f (Misplaced g :)  res
             | otherwise  = f (Absent g :) res  
             where
-                res@(post,_) = match' (Map.insert t () preds) gs ts 
-                f = bimap (Map.insert t ())
+                res@(post,_) = match' (AA.insert t () preds) gs ts 
+                f = bimap (AA.insert t ())
         match' _ _ _ = undefined 
 
+-- | Checks if all the matches are correct.
 fullMatch :: [Match] -> Bool
 fullMatch = all isCorrect
     where
         isCorrect (Correct _) = True 
         isCorrect _           = False
 
+-- | Projects the character out of a match.
 getMatchChar :: Match -> Char 
 getMatchChar (Absent c)    = c
 getMatchChar (Misplaced c) = c

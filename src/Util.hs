@@ -1,20 +1,39 @@
+{-|
+Module      : Util
+Description : Provides various utilities that shall be used throughout the program.
+License     : GPL-3
+Maintainer  : 15-11139@usb.ve, 16-10400@usb.ve
+Stability   : experimental
+Portability : POSIX
+-}
+
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE CPP #-}
 module Util where 
 
-import System.IO  
-import Control.Monad
+import System.IO
+    ( IO,
+      FilePath,
+      putStr,
+      readFile,
+      hGetBuffering,
+      hSetBuffering,
+      hSetEcho,
+      BufferMode(NoBuffering),
+      stdin,
+      stdout )  
+import Control.Monad ( Monad(return, (>>)), Functor(fmap) )
 import Prelude hiding (lookup)
-import Match
-import AA
-import Foreign.C.Types
-import Data.Char
+import AA ( AA, fromList )
+import Foreign.C.Types ( CInt(..) )
+import Data.Char ( chr )
+import Control.Exception (catch)
 
--- Number of turns in the game
+-- | Number of turns in the game
 turns :: Int
 turns = 6
 
--- Path of the file where are saved the words
+-- | Path of the file where are saved the words
 dictionary :: String
 dictionary = "american-english"
 
@@ -22,15 +41,19 @@ dictionary = "american-english"
 -- Functions                    |
 ---------------------------------
 
+-- | Checks whether a string is a valid 5 letter word.
 validWord :: String -> Bool
+-- ... but with style... applicative style.
 validWord  = (&&) <$> ((==5) . length ) <*> all isLetter
     where
         isLetter :: Char -> Bool
         isLetter = (`elem` ['a' .. 'z'])
 
+-- | Filters in all the valid words from a list.
 fiveLetterWords :: [String] -> [String]
 fiveLetterWords = filter validWord 
 
+-- | Loads a dictionary represented as an AA tree.
 loadDictionary :: FilePath -> IO (AA.AA String String)
 loadDictionary path = do
     contents <- readFile path
@@ -38,14 +61,15 @@ loadDictionary path = do
         diag x = (x,x)
     return $ fromList $ fmap diag lista
 
+-- | persistently asks for a yes or no, printing the given message each time.
 yesOrNo :: String -> IO Bool
 yesOrNo text = withNoBuffer $ do
-    putStr ( text ++ " (y/n) ?" )
+    putStr' ( text ++ " (y/n) ?" )
     c <- getChar'
     case c of 
-        'y' -> putStr " y\n" >>return True
-        'n' -> putStr " n\n" >>return False
-        _   -> putStr "\n"   >> yesOrNo text
+        'y' -> putStr' " y\n" >>return True
+        'n' -> putStr' " n\n" >>return False
+        _   -> putStr' "\n"   >> yesOrNo text
 
 
 
@@ -53,6 +77,9 @@ yesOrNo text = withNoBuffer $ do
 -- No need to read past here ------------------------------
 -----------------------------------------------------------
 
+-- | Perform an IO action with no buffering (stdin AND stdout) and no echo.
+-- restoring the states after it's done (NOTE: if an exception happens, it's NOT guaranteed that the
+-- restoration is done!)
 withNoBuffer :: IO a -> IO a
 withNoBuffer ma = do 
     stdinBuffer  <- hGetBuffering stdin 
@@ -61,13 +88,21 @@ withNoBuffer ma = do
     hSetBuffering stdout NoBuffering
     hSetEcho stdout False
 
-    a <- ma 
+    a <- ma `catch` (\_ -> 
+        hSetBuffering stdin stdinBuffer 
+        >> hSetBuffering stdout stdoutBuffer 
+        >> hSetEcho stdout True)
 
     hSetBuffering stdin stdinBuffer
     hSetBuffering stdout stdoutBuffer
     hSetEcho stdout True
     
     pure a
+
+-- | Prints a string to the `stdout` ASAP. Needed if buffer mode is anything other than `NoBuffering`.
+-- (windows is not very nais to us :()
+putStr' :: String -> IO ()
+putStr' s = putStr s >> hFlush stdout
 
 -- Multi-platform version of `getChar` which has a fix for a GHC bug with Windows cmd/Powershell
 getChar' :: IO Char

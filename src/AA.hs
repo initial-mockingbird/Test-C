@@ -1,8 +1,19 @@
+{-|
+Module      : AA
+Description : Map library based on AA trees.
+License     : GPL-3
+Maintainer  : 15-11139@usb.ve, 16-10400@usb.ve
+Stability   : experimental
+Portability : POSIX
+-}
+
 module AA 
     {-( AA
     , empty 
     , isEmpty
     , insert
+    , insertWithKey
+    , insertWith
     , lookup
     , delete 
     , member
@@ -10,17 +21,16 @@ module AA
     )-}
     where
 
-import System.IO 
-import System.Random (randomRIO) -- BORRAR 
 import Prelude hiding (lookup)
-import Control.Monad
-import Data.Bifunctor
-import Data.Foldable
+import Control.Monad  ( when )
+import Data.Bifunctor ( Bifunctor(first) )
+import Data.Foldable  ( traverse_ )
 
 ---------------------------------
 -- Types                        |
 ---------------------------------
 
+-- | Definition of an AA Tree specialized to hold `(Key,Val)` pairs.
 data AA k a 
     = Empty
     | Node { lvl :: Int
@@ -44,7 +54,7 @@ instance Foldable (AA k) where
         where
             acc' = f v $ foldr f acc right  
 
-
+-- | A more general fold that takes into consideration the key.
 foldrWithKey :: Ord k => (k -> a -> b -> b) -> b -> AA k a -> b
 foldrWithKey _ acc Empty = acc
 foldrWithKey f acc (Node _ k v left right) = foldrWithKey f acc' left 
@@ -55,9 +65,35 @@ foldrWithKey f acc (Node _ k v left right) = foldrWithKey f acc' left
 -- Builder                      |
 ---------------------------------
 
+-- | Builds an empty AA Tree.
 empty :: Ord k => AA k a
 empty = Empty
 
+-- | Builds a tree from a list of `(Key,Value)` pairs.
+fromList :: Ord k => [(k,v)] -> AA k v
+fromList = foldr (\(k,v) t -> insert k v t) empty
+
+---------------------------------
+-- Predicates                   |
+---------------------------------
+
+-- | Checks whether we have an empty tree
+isEmpty :: AA k a -> Bool
+-- foldable goes BRRRRRRRRRRRRRRRRRRRRRRRRRR
+isEmpty = null
+
+-- | Checks wheter a `Key` belongs to the tree. Useful if Tree is treated as a set.
+member :: Ord k => k -> AA k v -> Bool
+member k t = case lookup k t of 
+  Nothing -> False 
+  Just _  -> True
+
+---------------------------------
+-- Functions                    |
+---------------------------------
+
+-- | Inserts a pair `(Key,Value)` into the tree using the provided function to combine the
+-- contents in case of collision.
 insertWithKey :: Ord k => k -> a -> (k -> a -> a -> a) -> AA k a -> AA k a
 insertWithKey k v _ Empty = Node 1 k v Empty Empty 
 insertWithKey k v f t@Node{key=_key,val=_val,lAA=l,rAA=r}
@@ -65,13 +101,19 @@ insertWithKey k v f t@Node{key=_key,val=_val,lAA=l,rAA=r}
     | k > _key  = split . skew $ t{rAA =insertWithKey k v f r}
     | otherwise = t{val= f k v _val}
 
+-- |  Inserts a pair `(Key,Value)` into the tree using the provided function to combine the
+-- contents in case of collision. 
 insertWith :: Ord k => k -> a -> (a -> a -> a) -> AA k a -> AA k a
 insertWith k v f = insertWithKey k v (\_ v v' -> f v v') 
 
+-- |  Inserts a pair `(Key,Value)` into the tree replacing the contents in case of collision.
 insert :: Ord k => k -> a -> AA k a -> AA k a
 insert k v = insertWith k v const
 
+-- | Deletes a node `Key` from the tree.
 delete :: Ord k => k -> AA k a -> AA k a 
+-- I'm so verry sorry about the code, it was too imperative...
+-- maybe with lenses it would have been more elegant?
 delete _ Empty = Empty
 delete k n@Node {lvl=_lvl, key=_key, val=_val, lAA=_lAA, rAA=_rAA}
     | k > _key = g n{rAA= delete k _rAA}
@@ -107,9 +149,7 @@ delete k n@Node {lvl=_lvl, key=_key, val=_val, lAA=_lAA, rAA=_rAA}
         h n = n
         
         
-
-
-
+-- | Safe accesor.
 lookup :: Ord k => k -> AA k v -> Maybe v
 lookup _ Empty = Nothing 
 lookup k Node{key=_key,val=_val,lAA=_lAA,rAA=_rAA}
@@ -117,38 +157,31 @@ lookup k Node{key=_key,val=_val,lAA=_lAA,rAA=_rAA}
     | k > _key  = lookup k _rAA
     | otherwise = Just _val 
 
+-- | Catamorphs the tree into a list of `(Key,Value)` pairs.
 toList :: Ord k => AA k v -> [(k,v)]
 toList = foldrWithKey (\k v acc -> (k,v):acc) []
 
-fromList :: Ord k => [(k,v)] -> AA k v
-fromList = foldr (\(k,v) t -> insert k v t) empty
-
-member :: Ord k => k -> AA k v -> Bool
-member k t = case lookup k t of 
-  Nothing -> False 
-  Just _  -> True
 
 ---------------------------------
--- Functions                    |
+-- Internal                     |
 ---------------------------------
 
-
-isEmpty :: AA k a -> Bool
-isEmpty Empty = True
-isEmpty _     = False 
-
+-- | Checks whether a node is a leaf.
 isLeaf :: AA k a -> Bool
 isLeaf Node {lvl=1} = True 
 isLeaf _ = False
 
+-- | Tries to access the right child of a node.
 getRight :: AA k a -> AA k a
 getRight Empty = Empty
 getRight Node {rAA=_rAA} = _rAA 
 
+-- | Tries to access the left child of a node.
 getLeft :: AA k a -> AA k a
 getLeft Empty = Empty
 getLeft Node {lAA=_lAA} = _lAA 
 
+-- | Gets the successor of a node.
 successor :: AA k a -> AA k a
 successor Empty = Empty
 successor Node{rAA=Empty} = Empty
@@ -158,7 +191,7 @@ successor Node{rAA=n} = getMin n
         getMin n@Node {lAA=Empty} = n{lvl=1}
         getMin n = getMin $ getLeft n 
 
-
+-- | Gets the predecessor of a node.
 predecessor :: AA k a -> AA k a
 predecessor Empty = Empty
 predecessor Node{lAA=Empty} = Empty
@@ -168,6 +201,7 @@ predecessor Node{lAA=n} = getMax n
         getMax n@Node {rAA=Empty} = n{lvl=1}
         getMax n = getMax $ getRight n 
 
+-- | Insertion at a tree level.
 modifyWithCrumbs :: (AA k a -> AA k a) -> Crumbs -> AA k a -> AA k a
 modifyWithCrumbs f [] t = f t
 modifyWithCrumbs f (L:cs) t@Node{lAA=_lAA} = t{lAA = modifyWithCrumbs f cs _lAA}
@@ -184,11 +218,7 @@ setLeft, setRight :: AA k a -> AA k a -> AA k a
 setLeft l = modifyLeft (const l)
 setRight l = modifyRight (const l)
 
-
----------------------------------
--- Internal                     |
----------------------------------
-
+-- | Skew operation.
 skew :: Ord k => AA k v -> AA k v
 skew Empty = Empty
 skew t@Node{lAA=Empty} = t
@@ -196,6 +226,7 @@ skew t@(Node lvl _ _ l@Node{lvl=lvlL, rAA=rAAL} _)
     | lvlL == lvl = l{rAA = t{lAA=rAAL}}
     | otherwise   = t 
 
+-- | Split  operation.
 split :: Ord k => AA k v -> AA k v 
 split Empty = Empty
 split t@Node{rAA=Empty} = t
@@ -204,6 +235,7 @@ split t@(Node lvl key val lAA r@Node{lvl=lvlR, lAA=lAAR,rAA=Node{lvl=lvlRR}})
     | lvl <= lvlRR = r{lvl=lvlR + 1, lAA=t{rAA=lAAR}}
     | otherwise  = t
 
+-- | Decrease level operation.
 decreaseLevel :: Ord k => AA k v -> AA k v
 decreaseLevel Empty = Empty
 decreaseLevel t@Node{lvl=_lvl,lAA=l,rAA=r}
@@ -221,7 +253,7 @@ decreaseLevel t@Node{lvl=_lvl,lAA=l,rAA=r}
         setLevel n t     = t{lvl = n}
 
 ---------------------------------
--- Tipos invaiante              |
+-- Aux Types?                   |
 ---------------------------------
 
 data Direction = L | R deriving (Eq,Show)

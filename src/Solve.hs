@@ -1,3 +1,12 @@
+{-|
+Module      : Solve
+Description : Provides the main logic of the solver, its strategies and whatnot.
+License     : GPL-3
+Maintainer  : 15-11139@usb.ve, 16-10400@usb.ve
+Stability   : experimental
+Portability : POSIX
+-}
+
 module Solve where
 
 import AA (AA)
@@ -40,8 +49,6 @@ instance Show SolverState where
         = show _remaining ++ " words remain. I suggest: \171" ++  _suggestion ++ "\187."
 
 
-
-
 ---------------------------------
 -- Functions                    |
 ---------------------------------
@@ -51,9 +58,9 @@ play = do
     args <- fmap ((fmap . fmap) toLower) getArgs 
     let f s = initialSolver s  >>= solveTheGame
     case args of
-        []         -> f Naive 
-        ["naive"]  -> f Naive 
-        ["clever"] -> f Clever
+        []         -> putStrLn "Naive Wordle solver!"  >> f Naive 
+        ["naive"]  -> putStrLn "Naive Wordle solver!"  >> f Naive 
+        ["clever"] -> putStrLn "Clever Wordle solver!" >> f Clever
         _ -> putStrLn "Invalid arguments, syntax  should be: $  stack exec solver-exe [naive | clever]"    
 
 
@@ -87,6 +94,7 @@ solveTheGame' s'@GS {remaining=_remaining} = do
     foldM_ (\s n -> getHint n >>= \m -> suggestRound m s) s [1..6] 
     putStrLn "You Lost \129319"
     mzero
+
 
 
 updateState :: [Match] -> SolverState -> IO SolverState
