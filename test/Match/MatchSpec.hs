@@ -35,6 +35,10 @@ readSpec = describe "read Spec" $ do
         \(RM m :: RandomMatch) -> case (readMaybe . show) m :: Maybe Match of
             Just _ -> True
             _      -> False 
+    prop "Showing and then reading a match yields the identity (on list)" $ 
+        \(ms :: [RandomMatch]) -> case (readMaybe . show) (getRM <$> ms) :: Maybe [Match] of
+            Just _ -> True
+            _      -> False 
     prop "trailing spaces don't matter" $
         \(RM m :: RandomMatch) (n :: Int) -> case (readMaybe . (++ replicate n ' ') . show) m :: Maybe Match of
             Just _ -> True

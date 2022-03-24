@@ -56,7 +56,6 @@ instance Read Match where
             
             void = (pure () <*)
             traverse_ f = void . traverse f
-
 ------------------------------
 -- Functions                 |
 ------------------------------

@@ -39,6 +39,32 @@ library
     , random
   default-language: Haskell2010
 
+executable Solver
+  main-is: Main.hs
+  other-modules:
+      Paths_Wordle
+  hs-source-dirs:
+      solver
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Wordle
+    , base >=4.7 && <5
+    , random
+  default-language: Haskell2010
+
+executable Wordle
+  main-is: Main.hs
+  other-modules:
+      Paths_Wordle
+  hs-source-dirs:
+      wordle
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Wordle
+    , base >=4.7 && <5
+    , random
+  default-language: Haskell2010
+
 executable Wordle-exe
   main-is: Main.hs
   other-modules:

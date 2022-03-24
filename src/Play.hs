@@ -34,8 +34,8 @@ instance Show GameState where
         ++ " Streak: " ++ show _streak
 
 instance Show Result where
-    show (Win (T t))  = "Got it! It was «" ++ t ++ "» 😎 "
-    show (Lose (T t)) = "Bummer! It was «" ++ t ++ "» 💀 "
+    show (Win (T t))  = "Got it! It was \171" ++ t ++ "\187 \128526 "
+    show (Lose (T t)) = "Bummer! It was \171" ++ t ++ "\187 \128128 "
 
 ---------------------------------
 -- Functions Auxiliares         |
@@ -90,7 +90,7 @@ play' gs current max =  do
     let t = target gs
         d = dict gs 
         m = match (G word) t
-        printMatch = (putStr . show)  m >> putChar '\n'
+        printMatch = putChar ' ' >> (putStr . show)  m >> putChar '\n'
 
     case (word `AA.member` d, fullMatch m) of
         (False,_) -> putStrLn ("Your guess: '" ++ word ++ "' is not a valid word!") >> play' gs current max
